@@ -7,13 +7,19 @@ import random
 
 # --- Global Variables ---
 stop_typing = False
+is_typing = False  # NEW: flag to check if typing is ongoing
 key_listeners = {}
 
 # --- Functions ---
 
 def start_typing():
-    global stop_typing
+    global stop_typing, is_typing
+    if is_typing:  # Prevent multiple overlapping typing threads
+        info_label.config(text="Already typing!")
+        return
+
     stop_typing = False
+    is_typing = True  # Mark typing as started
     text = text_box.get("1.0", tk.END).rstrip("\n")
     
     try:
@@ -38,6 +44,7 @@ def start_typing():
 
     if not text:
         info_label.config(text="Text box is empty!")
+        is_typing = False
         return
 
     # Thread-safe countdown using Tkinter's after
@@ -47,12 +54,16 @@ def start_typing():
             root.after(1000, countdown, seconds - 1)
         else:
             start_button.config(text="Start Typing")
-            threading.Thread(target=type_text, args=(text, delay, rand_min, rand_max, word_min, word_max), daemon=True).start()
+            threading.Thread(
+                target=type_text, 
+                args=(text, delay, rand_min, rand_max, word_min, word_max), 
+                daemon=True
+            ).start()
 
     countdown(3)
 
 def type_text(text, delay, rand_min, rand_max, word_min, word_max):
-    global stop_typing
+    global stop_typing, is_typing
     words = text.split(" ")
     for i, word in enumerate(words):
         if stop_typing:
@@ -68,6 +79,7 @@ def type_text(text, delay, rand_min, rand_max, word_min, word_max):
             word_delay = random.uniform(word_min, word_max)
             time.sleep(word_delay)
     info_label.config(text="Typing finished" if not stop_typing else "Typing stopped")
+    is_typing = False  # Mark typing as finished
 
 def stop():
     global stop_typing
