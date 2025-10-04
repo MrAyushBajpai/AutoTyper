@@ -14,22 +14,22 @@ key_listeners = {}
 
 def start_typing():
     global stop_typing, is_typing
-    if is_typing:  # Prevent multiple overlapping typing threads
+    if is_typing:
         info_label.config(text="Already typing!")
         return
 
     stop_typing = False
-    is_typing = True  # Mark typing as started
+    is_typing = True
     text = text_box.get("1.0", tk.END).rstrip("\n")
-    
-    # Get typing delay
+
+    # Typing delay
     try:
         delay_ms = int(delay_entry.get())
     except ValueError:
         delay_ms = 100
     delay = delay_ms / 1000.0
 
-    # Get random per-character delay
+    # Random per-character delay
     try:
         rand_min_ms = int(rand_min_entry.get())
         rand_max_ms = int(rand_max_entry.get())
@@ -37,7 +37,7 @@ def start_typing():
         rand_min_ms, rand_max_ms = 0, 0
     rand_min, rand_max = rand_min_ms / 1000.0, rand_max_ms / 1000.0
 
-    # Get word delay
+    # Word delay
     try:
         word_min_ms = int(word_min_entry.get())
         word_max_ms = int(word_max_entry.get())
@@ -45,53 +45,104 @@ def start_typing():
         word_min_ms, word_max_ms = 200, 500
     word_min, word_max = word_min_ms / 1000.0, word_max_ms / 1000.0
 
-    # Get startup delay in ms
+    # Startup delay
     try:
         startup_delay_ms = int(startup_delay_entry.get())
         if startup_delay_ms < 0:
             startup_delay_ms = 0
     except ValueError:
-        startup_delay_ms = 3000  # default 3 seconds
+        startup_delay_ms = 3000
     startup_delay = startup_delay_ms / 1000.0
+
+    # Typo chance
+    try:
+        typo_chance = float(typo_entry.get()) / 100.0
+        if typo_chance < 0 or typo_chance > 1:
+            typo_chance = 0.0
+    except ValueError:
+        typo_chance = 0.0
+
+    # Typo length range
+    try:
+        typo_len_min = int(typo_len_min_entry.get())
+        typo_len_max = int(typo_len_max_entry.get())
+        if typo_len_min < 1: typo_len_min = 1
+        if typo_len_max < typo_len_min: typo_len_max = typo_len_min
+    except ValueError:
+        typo_len_min, typo_len_max = 1, 1
+
+    # Typo correction delay range
+    try:
+        typo_delay_min_ms = int(typo_delay_min_entry.get())
+        typo_delay_max_ms = int(typo_delay_max_entry.get())
+        if typo_delay_min_ms < 0: typo_delay_min_ms = 0
+        if typo_delay_max_ms < typo_delay_min_ms: typo_delay_max_ms = typo_delay_min_ms
+    except ValueError:
+        typo_delay_min_ms, typo_delay_max_ms = 50, 50
 
     if not text:
         info_label.config(text="Text box is empty!")
         is_typing = False
         return
 
-    # Thread-safe countdown using Tkinter's after
+    # Countdown
     def countdown(seconds_remaining):
         if seconds_remaining > 0:
-            start_button.config(text=f"Starting in {seconds_remaining:.0f}ms...")
-            root.after(100, countdown, seconds_remaining - 100)
+            start_button.config(text=f"Starting in {int(seconds_remaining*1000)}ms...")
+            root.after(100, countdown, seconds_remaining - 0.1)
         else:
             start_button.config(text="Start Typing")
             threading.Thread(
-                target=type_text, 
-                args=(text, delay, rand_min, rand_max, word_min, word_max), 
+                target=type_text,
+                args=(text, delay, rand_min, rand_max, word_min, word_max,
+                      typo_chance, typo_len_min, typo_len_max,
+                      typo_delay_min_ms, typo_delay_max_ms),
                 daemon=True
             ).start()
 
-    countdown(int(startup_delay * 1000))
+    countdown(startup_delay)
 
-def type_text(text, delay, rand_min, rand_max, word_min, word_max):
+def type_text(text, delay, rand_min, rand_max, word_min, word_max,
+              typo_chance, typo_len_min, typo_len_max,
+              typo_delay_min_ms, typo_delay_max_ms):
     global stop_typing, is_typing
+
+    def make_typo(length):
+        chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+        return ''.join(random.choice(chars) for _ in range(length))
+
     words = text.split(" ")
     for i, word in enumerate(words):
         if stop_typing:
             break
-        for char in word:
+        j = 0
+        while j < len(word):
             if stop_typing:
                 break
             actual_delay = delay + random.uniform(rand_min, rand_max)
             actual_delay = max(0, actual_delay)
-            pyautogui.write(char, interval=actual_delay)
-        if i < len(words) - 1:  # Only add space and word delay if not last word
+
+            # Possibly insert a typo
+            if random.random() < typo_chance:
+                typo_length = random.randint(typo_len_min, typo_len_max)
+                typo_text = make_typo(typo_length)
+                for c in typo_text:
+                    pyautogui.write(c, interval=actual_delay)
+                typo_delay = random.uniform(typo_delay_min_ms, typo_delay_max_ms) / 1000.0
+                time.sleep(typo_delay)
+                for _ in typo_text:
+                    pyautogui.press('backspace')
+
+            pyautogui.write(word[j], interval=actual_delay)
+            j += 1
+
+        if i < len(words) - 1:
             pyautogui.write(" ")
             word_delay = random.uniform(word_min, word_max)
             time.sleep(word_delay)
+
     info_label.config(text="Typing finished" if not stop_typing else "Typing stopped")
-    is_typing = False  # Mark typing as finished
+    is_typing = False
 
 def stop():
     global stop_typing
@@ -100,11 +151,13 @@ def stop():
 
 def remove_focus(event):
     widget = event.widget
-    if widget not in (text_box, delay_entry, rand_min_entry, rand_max_entry, word_min_entry, word_max_entry, startup_delay_entry):
+    if widget not in (text_box, delay_entry, rand_min_entry, rand_max_entry,
+                      word_min_entry, word_max_entry, startup_delay_entry,
+                      typo_entry, typo_len_min_entry, typo_len_max_entry,
+                      typo_delay_min_entry, typo_delay_max_entry):
         root.focus_set()
 
 # --- Hotkey Functions ---
-
 def set_start_key():
     wait_for_key("start")
 
@@ -135,7 +188,7 @@ def set_hotkey(name, key, func):
     listener = keyboard.add_hotkey(key, func)
     key_listeners[name] = listener
 
-# --- Tkinter GUI setup ---
+# --- GUI ---
 root = tk.Tk()
 root.title("Auto Typer")
 
@@ -144,59 +197,46 @@ root.bind("<Button-1>", remove_focus)
 text_box = tk.Text(root, height=10, width=50)
 text_box.pack(pady=10)
 
-delay_label = tk.Label(root, text="Base delay between keystrokes (ms):")
-delay_label.pack()
-delay_entry = tk.Entry(root)
-delay_entry.insert(0, "100")
-delay_entry.pack(pady=5)
+# Keystroke delay
+tk.Label(root, text="Base delay between keystrokes (ms):").pack()
+delay_entry = tk.Entry(root); delay_entry.insert(0, "100"); delay_entry.pack(pady=5)
 
-rand_delay_label = tk.Label(root, text="Random delay range per keystroke (ms, min-max):")
-rand_delay_label.pack()
-rand_frame = tk.Frame(root)
-rand_frame.pack(pady=5)
-rand_min_entry = tk.Entry(rand_frame, width=5)
-rand_min_entry.insert(0, "0")
-rand_min_entry.pack(side=tk.LEFT, padx=(0,5))
-rand_max_entry = tk.Entry(rand_frame, width=5)
-rand_max_entry.insert(0, "0")
-rand_max_entry.pack(side=tk.LEFT)
+tk.Label(root, text="Random delay range per keystroke (ms, min-max):").pack()
+rand_frame = tk.Frame(root); rand_frame.pack(pady=5)
+rand_min_entry = tk.Entry(rand_frame, width=5); rand_min_entry.insert(0,"0"); rand_min_entry.pack(side=tk.LEFT, padx=(0,5))
+rand_max_entry = tk.Entry(rand_frame, width=5); rand_max_entry.insert(0,"0"); rand_max_entry.pack(side=tk.LEFT)
 
-word_delay_label = tk.Label(root, text="Word delay range (ms, min-max):")
-word_delay_label.pack()
-word_frame = tk.Frame(root)
-word_frame.pack(pady=5)
-word_min_entry = tk.Entry(word_frame, width=5)
-word_min_entry.insert(0, "0")
-word_min_entry.pack(side=tk.LEFT, padx=(0,5))
-word_max_entry = tk.Entry(word_frame, width=5)
-word_max_entry.insert(0, "0")
-word_max_entry.pack(side=tk.LEFT)
+tk.Label(root, text="Word delay range (ms, min-max):").pack()
+word_frame = tk.Frame(root); word_frame.pack(pady=5)
+word_min_entry = tk.Entry(word_frame, width=5); word_min_entry.insert(0,"0"); word_min_entry.pack(side=tk.LEFT, padx=(0,5))
+word_max_entry = tk.Entry(word_frame, width=5); word_max_entry.insert(0,"0"); word_max_entry.pack(side=tk.LEFT)
 
-startup_delay_label = tk.Label(root, text="Startup delay before typing (ms):")
-startup_delay_label.pack()
-startup_delay_entry = tk.Entry(root)
-startup_delay_entry.insert(0, "3000")
-startup_delay_entry.pack(pady=5)
+tk.Label(root, text="Startup delay before typing (ms):").pack()
+startup_delay_entry = tk.Entry(root); startup_delay_entry.insert(0,"3000"); startup_delay_entry.pack(pady=5)
 
-start_button = tk.Button(root, text="Start Typing", command=start_typing)
-start_button.pack(pady=5)
+tk.Label(root, text="Chance of making a typo (%):").pack()
+typo_entry = tk.Entry(root); typo_entry.insert(0,"0"); typo_entry.pack(pady=5)
 
-stop_button = tk.Button(root, text="Stop", command=stop)
-stop_button.pack(pady=5)
+tk.Label(root, text="Typo length range (chars, min-max):").pack()
+typo_len_frame = tk.Frame(root); typo_len_frame.pack(pady=5)
+typo_len_min_entry = tk.Entry(typo_len_frame, width=5); typo_len_min_entry.insert(0,"1"); typo_len_min_entry.pack(side=tk.LEFT, padx=(0,5))
+typo_len_max_entry = tk.Entry(typo_len_frame, width=5); typo_len_max_entry.insert(0,"1"); typo_len_max_entry.pack(side=tk.LEFT)
 
-start_key_label = tk.Label(root, text="Start Key: Not set")
-start_key_label.pack()
-set_start_button = tk.Button(root, text="Set Start Key", command=set_start_key)
-set_start_button.pack(pady=2)
+tk.Label(root, text="Typo correction delay range (ms, min-max):").pack()
+typo_delay_frame = tk.Frame(root); typo_delay_frame.pack(pady=5)
+typo_delay_min_entry = tk.Entry(typo_delay_frame, width=5); typo_delay_min_entry.insert(0,"50"); typo_delay_min_entry.pack(side=tk.LEFT, padx=(0,5))
+typo_delay_max_entry = tk.Entry(typo_delay_frame, width=5); typo_delay_max_entry.insert(0,"50"); typo_delay_max_entry.pack(side=tk.LEFT)
 
-stop_key_label = tk.Label(root, text="Stop Key: Not set")
-stop_key_label.pack()
-set_stop_button = tk.Button(root, text="Set Stop Key", command=set_stop_key)
-set_stop_button.pack(pady=2)
+start_button = tk.Button(root, text="Start Typing", command=start_typing); start_button.pack(pady=5)
+stop_button = tk.Button(root, text="Stop", command=stop); stop_button.pack(pady=5)
 
-info_label = tk.Label(root, text="")
-info_label.pack(pady=10)
+start_key_label = tk.Label(root, text="Start Key: Not set"); start_key_label.pack()
+set_start_button = tk.Button(root, text="Set Start Key", command=set_start_key); set_start_button.pack(pady=2)
+
+stop_key_label = tk.Label(root, text="Stop Key: Not set"); stop_key_label.pack()
+set_stop_button = tk.Button(root, text="Set Stop Key", command=set_stop_key); set_stop_button.pack(pady=2)
+
+info_label = tk.Label(root, text=""); info_label.pack(pady=10)
 
 pyautogui.FAILSAFE = True
-
 root.mainloop()
