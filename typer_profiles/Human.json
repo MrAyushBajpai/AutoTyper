@@ -1,0 +1,17 @@
+{
+  "base_delay": "150",
+  "rand_min": "50",
+  "rand_max": "200",
+  "word_min": "100",
+  "word_max": "300",
+  "startup_delay": "3000",
+  "typo_chance": "5",
+  "typo_len_min": "1",
+  "typo_len_max": "5",
+  "typo_delay_min": "300",
+  "typo_delay_max": "500",
+  "letters": true,
+  "numbers": false,
+  "special": false,
+  "text": ""
+}
