@@ -3,7 +3,11 @@ import pyautogui
 import time
 import threading
 
+stop_typing = False
+
 def start_typing():
+    global stop_typing
+    stop_typing = False
     text = text_box.get("1.0", tk.END).rstrip("\n")
     try:
         delay_ms = int(delay_entry.get())
@@ -15,9 +19,15 @@ def start_typing():
     def type_text():
         time.sleep(3)
         for char in text:
+            if stop_typing:
+                break
             pyautogui.write(char, interval=delay)
 
     threading.Thread(target=type_text, daemon=True).start()
+
+def stop():
+    global stop_typing
+    stop_typing = True
 
 # Tkinter GUI setup
 root = tk.Tk()
@@ -37,5 +47,9 @@ delay_entry.pack(pady=5)
 # Start button
 start_button = tk.Button(root, text="Start Typing", command=start_typing)
 start_button.pack(pady=5)
+
+#Stop Button
+stop_button = tk.Button(root, text="Stop Typing", command=stop)
+stop_button.pack(pady=5)
 
 root.mainloop()
