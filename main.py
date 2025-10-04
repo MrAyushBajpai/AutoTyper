@@ -17,7 +17,10 @@ def start_typing():
     delay = delay_ms / 1000.0
 
     def type_text():
-        time.sleep(3)
+        for i in range(3, 0, -1):
+            start_button.config(text=f"Starting in {i}...")
+            time.sleep(1)
+        start_button.config(text="Start Typing")
         for char in text:
             if stop_typing:
                 break
