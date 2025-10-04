@@ -5,14 +5,19 @@ import threading
 
 def start_typing():
     text = text_box.get("1.0", tk.END).rstrip("\n")
-    delay = 0.1
+    try:
+        delay_ms = int(delay_entry.get())
+    except ValueError:
+        delay_ms = 100
+
+    delay = delay_ms / 1000.0
 
     def type_text():
         time.sleep(3)
         for char in text:
             pyautogui.write(char, interval=delay)
 
-    threading.Thread(target=type_text).start()
+    threading.Thread(target=type_text, daemon=True).start()
 
 # Tkinter GUI setup
 root = tk.Tk()
@@ -21,6 +26,13 @@ root.title("Auto Typer")
 # Text box
 text_box = tk.Text(root, height=10, width=50)
 text_box.pack(pady=10)
+
+# Delay input
+delay_label = tk.Label(root, text="Delay between keystrokes (ms):")
+delay_label.pack()
+delay_entry = tk.Entry(root)
+delay_entry.insert(0, "100")
+delay_entry.pack(pady=5)
 
 # Start button
 start_button = tk.Button(root, text="Start Typing", command=start_typing)
