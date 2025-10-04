@@ -10,6 +10,8 @@
   "typo_len_max": "5",
   "typo_delay_min": "300",
   "typo_delay_max": "500",
+  "backspace_delay_min": "50",
+  "backspace_delay_max": "150",
   "letters": true,
   "numbers": false,
   "special": false,

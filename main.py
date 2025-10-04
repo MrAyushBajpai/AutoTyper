@@ -42,6 +42,8 @@ def save_profile():
         "typo_len_max": typo_len_max_entry.get(),
         "typo_delay_min": typo_delay_min_entry.get(),
         "typo_delay_max": typo_delay_max_entry.get(),
+        "backspace_delay_min": backspace_delay_min_entry.get(),
+        "backspace_delay_max": backspace_delay_max_entry.get(), 
         "letters": letters_var.get(),
         "numbers": numbers_var.get(),
         "special": special_var.get(),
@@ -104,6 +106,12 @@ def load_profile():
         typo_delay_max_entry.delete(0, tk.END)
         typo_delay_max_entry.insert(0, data.get("typo_delay_max", "50"))
         
+        backspace_delay_min_entry.delete(0, tk.END)
+        backspace_delay_min_entry.insert(0, data.get("backspace_delay_min", "50"))
+
+        backspace_delay_max_entry.delete(0, tk.END)
+        backspace_delay_max_entry.insert(0, data.get("backspace_delay_max", "50"))
+
         letters_var.set(data.get("letters", True))
         numbers_var.set(data.get("numbers", False))
         special_var.set(data.get("special", False))
@@ -281,10 +289,12 @@ def type_text(text, delay, rand_min, rand_max, word_min, word_max,
                 typo_delay = random.uniform(typo_delay_min_ms, typo_delay_max_ms) / 1000.0
                 time.sleep(typo_delay)
                 
-                # Backspace the typo characters
+                backspace_delay_min = validate_number(backspace_delay_min_entry.get(), 50, 0, 5000)
+                backspace_delay_max = validate_number(backspace_delay_max_entry.get(), 50, backspace_delay_min, 5000)
+                backspace_delay = random.uniform(backspace_delay_min, backspace_delay_max) / 1000.0
                 for _ in typo_text:
                     pyautogui.press('backspace')
-                    time.sleep(0.01)  # Small delay between backspaces for reliability
+                    time.sleep(backspace_delay)
             
             # NOW type the correct character
             pyautogui.write(char, interval=actual_delay)
@@ -523,9 +533,21 @@ typo_delay_max_entry = ttk.Entry(typo_delay_frame, width=8)
 typo_delay_max_entry.insert(0, "50")
 typo_delay_max_entry.pack(side=tk.LEFT)
 
-ttk.Label(typo_frame, text="Include in typos:").grid(row=3, column=0, sticky="w", pady=2)
+ttk.Label(typo_frame, text="Backspace Delay (ms):").grid(row=3, column=0, sticky="w", pady=2)
+backspace_delay_frame = ttk.Frame(typo_frame)
+backspace_delay_frame.grid(row=3, column=1, pady=2)
+backspace_delay_min_entry = ttk.Entry(backspace_delay_frame, width=8)
+backspace_delay_min_entry.insert(0, "50")
+backspace_delay_min_entry.pack(side=tk.LEFT)
+ttk.Label(backspace_delay_frame, text=" to ").pack(side=tk.LEFT)
+backspace_delay_max_entry = ttk.Entry(backspace_delay_frame, width=8)
+backspace_delay_max_entry.insert(0, "50")
+backspace_delay_max_entry.pack(side=tk.LEFT)
+
+
+ttk.Label(typo_frame, text="Include in typos:").grid(row=4, column=0, sticky="w", pady=2)
 typo_chars_frame = ttk.Frame(typo_frame)
-typo_chars_frame.grid(row=3, column=1, pady=2)
+typo_chars_frame.grid(row=4, column=1, pady=2)
 
 letters_var = tk.BooleanVar(value=True)
 numbers_var = tk.BooleanVar(value=False)
