@@ -87,6 +87,12 @@ def start_typing():
 
     # Countdown
     def countdown(seconds_remaining):
+        global is_typing
+        if stop_typing:  # Stop countdown if user pressed stop
+            start_button.config(text="Start Typing")
+            is_typing = False
+            info_label.config(text="Startup cancelled")
+            return
         if seconds_remaining > 0:
             start_button.config(text=f"Starting in {int(seconds_remaining*1000)}ms...")
             root.after(100, countdown, seconds_remaining - 0.1)
@@ -146,8 +152,11 @@ def type_text(text, delay, rand_min, rand_max, word_min, word_max,
 
 def stop():
     global stop_typing
+    global is_typing
     stop_typing = True
+    is_typing = False
     info_label.config(text="Stopped typing")
+    start_button.config(text="Start Typing")
 
 def remove_focus(event):
     widget = event.widget
@@ -159,7 +168,6 @@ def remove_focus(event):
 
 # --- Hotkey Functions ---
 def set_start_key():
-    # Unbind current start key if exists
     if "start" in key_listeners:
         keyboard.remove_hotkey(key_listeners["start"])
         key_listeners.pop("start")
@@ -167,7 +175,6 @@ def set_start_key():
     wait_for_key("start")
 
 def set_stop_key():
-    # Unbind current stop key if exists
     if "stop" in key_listeners:
         keyboard.remove_hotkey(key_listeners["stop"])
         key_listeners.pop("stop")
@@ -201,13 +208,11 @@ def set_hotkey(name, key, func):
 # --- GUI ---
 root = tk.Tk()
 root.title("Auto Typer")
-
 root.bind("<Button-1>", remove_focus)
 
 text_box = tk.Text(root, height=10, width=50)
 text_box.pack(pady=10)
 
-# Keystroke delay
 tk.Label(root, text="Base delay between keystrokes (ms):").pack()
 delay_entry = tk.Entry(root); delay_entry.insert(0, "100"); delay_entry.pack(pady=5)
 
