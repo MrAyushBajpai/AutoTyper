@@ -159,9 +159,19 @@ def remove_focus(event):
 
 # --- Hotkey Functions ---
 def set_start_key():
+    # Unbind current start key if exists
+    if "start" in key_listeners:
+        keyboard.remove_hotkey(key_listeners["start"])
+        key_listeners.pop("start")
+        start_key_label.config(text="Start Key: Not set")
     wait_for_key("start")
 
 def set_stop_key():
+    # Unbind current stop key if exists
+    if "stop" in key_listeners:
+        keyboard.remove_hotkey(key_listeners["stop"])
+        key_listeners.pop("stop")
+        stop_key_label.config(text="Stop Key: Not set")
     wait_for_key("stop")
 
 def wait_for_key(action):
