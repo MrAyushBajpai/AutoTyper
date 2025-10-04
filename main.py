@@ -3,6 +3,7 @@ import pyautogui
 import time
 import threading
 import keyboard
+import random
 
 # --- Global Variables ---
 stop_typing = False
@@ -21,6 +22,12 @@ def start_typing():
         delay_ms = 100
     delay = delay_ms / 1000.0
 
+    try:
+        max_rand_ms = int(rand_delay_entry.get())
+    except ValueError:
+        max_rand_ms = 0
+    max_rand = max_rand_ms / 1000.0  # convert ms to seconds
+
     if not text:
         info_label.config(text="Text box is empty!")
         return
@@ -32,16 +39,20 @@ def start_typing():
             root.after(1000, countdown, seconds - 1)
         else:
             start_button.config(text="Start Typing")
-            threading.Thread(target=type_text, args=(text, delay), daemon=True).start()
+            threading.Thread(target=type_text, args=(text, delay, max_rand), daemon=True).start()
 
     countdown(3)
 
-def type_text(text, delay):
+def type_text(text, delay, max_rand):
     global stop_typing
     for char in text:
         if stop_typing:
             break
-        pyautogui.write(char, interval=delay)
+        # Calculate random offset between -max_rand and +max_rand
+        actual_delay = delay + random.uniform(-max_rand, max_rand)
+        # Ensure delay is never negative
+        actual_delay = max(0, actual_delay)
+        pyautogui.write(char, interval=actual_delay)
     info_label.config(text="Typing finished" if not stop_typing else "Typing stopped")
 
 def stop():
@@ -51,7 +62,7 @@ def stop():
 
 def remove_focus(event):
     widget = event.widget
-    if widget not in (text_box, delay_entry):
+    if widget not in (text_box, delay_entry, rand_delay_entry):
         root.focus_set()
 
 # --- Hotkey Functions ---
@@ -101,6 +112,12 @@ delay_label.pack()
 delay_entry = tk.Entry(root)
 delay_entry.insert(0, "100")
 delay_entry.pack(pady=5)
+
+rand_delay_label = tk.Label(root, text="Max random delay offset (ms, optional):")
+rand_delay_label.pack()
+rand_delay_entry = tk.Entry(root)
+rand_delay_entry.insert(0, "0")
+rand_delay_entry.pack(pady=5)
 
 start_button = tk.Button(root, text="Start Typing", command=start_typing)
 start_button.pack(pady=5)
