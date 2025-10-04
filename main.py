@@ -23,10 +23,11 @@ def start_typing():
     delay = delay_ms / 1000.0
 
     try:
-        max_rand_ms = int(rand_delay_entry.get())
+        rand_min_ms = int(rand_min_entry.get())
+        rand_max_ms = int(rand_max_entry.get())
     except ValueError:
-        max_rand_ms = 0
-    max_rand = max_rand_ms / 1000.0
+        rand_min_ms, rand_max_ms = 0, 0
+    rand_min, rand_max = rand_min_ms / 1000.0, rand_max_ms / 1000.0
 
     try:
         word_min_ms = int(word_min_entry.get())
@@ -46,11 +47,11 @@ def start_typing():
             root.after(1000, countdown, seconds - 1)
         else:
             start_button.config(text="Start Typing")
-            threading.Thread(target=type_text, args=(text, delay, max_rand, word_min, word_max), daemon=True).start()
+            threading.Thread(target=type_text, args=(text, delay, rand_min, rand_max, word_min, word_max), daemon=True).start()
 
     countdown(3)
 
-def type_text(text, delay, max_rand, word_min, word_max):
+def type_text(text, delay, rand_min, rand_max, word_min, word_max):
     global stop_typing
     words = text.split(" ")
     for i, word in enumerate(words):
@@ -59,7 +60,7 @@ def type_text(text, delay, max_rand, word_min, word_max):
         for char in word:
             if stop_typing:
                 break
-            actual_delay = delay + random.uniform(-max_rand, max_rand)
+            actual_delay = delay + random.uniform(rand_min, rand_max)
             actual_delay = max(0, actual_delay)
             pyautogui.write(char, interval=actual_delay)
         if i < len(words) - 1:  # Only add space and word delay if not last word
@@ -75,7 +76,7 @@ def stop():
 
 def remove_focus(event):
     widget = event.widget
-    if widget not in (text_box, delay_entry, rand_delay_entry, word_min_entry, word_max_entry):
+    if widget not in (text_box, delay_entry, rand_min_entry, rand_max_entry, word_min_entry, word_max_entry):
         root.focus_set()
 
 # --- Hotkey Functions ---
@@ -119,28 +120,32 @@ root.bind("<Button-1>", remove_focus)
 text_box = tk.Text(root, height=10, width=50)
 text_box.pack(pady=10)
 
-delay_label = tk.Label(root, text="Delay between keystrokes (ms):")
+delay_label = tk.Label(root, text="Base delay between keystrokes (ms):")
 delay_label.pack()
 delay_entry = tk.Entry(root)
 delay_entry.insert(0, "100")
 delay_entry.pack(pady=5)
 
-rand_delay_label = tk.Label(root, text="Max random delay offset (ms, optional):")
+rand_delay_label = tk.Label(root, text="Random delay range per keystroke (ms, min-max):")
 rand_delay_label.pack()
-rand_delay_entry = tk.Entry(root)
-rand_delay_entry.insert(0, "0")
-rand_delay_entry.pack(pady=5)
+rand_frame = tk.Frame(root)
+rand_frame.pack(pady=5)
+rand_min_entry = tk.Entry(rand_frame, width=5)
+rand_min_entry.insert(0, "0")
+rand_min_entry.pack(side=tk.LEFT, padx=(0,5))
+rand_max_entry = tk.Entry(rand_frame, width=5)
+rand_max_entry.insert(0, "0")
+rand_max_entry.pack(side=tk.LEFT)
 
 word_delay_label = tk.Label(root, text="Word delay range (ms, min-max):")
 word_delay_label.pack()
 word_frame = tk.Frame(root)
 word_frame.pack(pady=5)
-
 word_min_entry = tk.Entry(word_frame, width=5)
-word_min_entry.insert(0, "200")
+word_min_entry.insert(0, "0")
 word_min_entry.pack(side=tk.LEFT, padx=(0,5))
 word_max_entry = tk.Entry(word_frame, width=5)
-word_max_entry.insert(0, "500")
+word_max_entry.insert(0, "0")
 word_max_entry.pack(side=tk.LEFT)
 
 start_button = tk.Button(root, text="Start Typing", command=start_typing)
