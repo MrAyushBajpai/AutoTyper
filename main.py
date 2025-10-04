@@ -114,8 +114,16 @@ def type_text(text, delay, rand_min, rand_max, word_min, word_max,
     global stop_typing, is_typing
 
     def make_typo(length):
-        chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-        return ''.join(random.choice(chars) for _ in range(length))
+       chars = ""
+       if letters_var.get():
+           chars += "abcdefghijklmnopqrstuvwxyz"
+       if numbers_var.get():
+           chars += "0123456789"
+       if special_var.get():
+           chars += "!@#$%^&*()_+-=[]{}|;:',.<>/?"
+       if not chars:  # fallback if nothing is selected
+           chars = "abcdefghijklmnopqrstuvwxyz"
+       return ''.join(random.choice(chars) for _ in range(length))
 
     words = text.split(" ")
     for i, word in enumerate(words):
@@ -241,6 +249,17 @@ tk.Label(root, text="Typo correction delay range (ms, min-max):").pack()
 typo_delay_frame = tk.Frame(root); typo_delay_frame.pack(pady=5)
 typo_delay_min_entry = tk.Entry(typo_delay_frame, width=5); typo_delay_min_entry.insert(0,"50"); typo_delay_min_entry.pack(side=tk.LEFT, padx=(0,5))
 typo_delay_max_entry = tk.Entry(typo_delay_frame, width=5); typo_delay_max_entry.insert(0,"50"); typo_delay_max_entry.pack(side=tk.LEFT)
+
+tk.Label(root, text="Include in typos:").pack()
+typo_options_frame = tk.Frame(root); typo_options_frame.pack(pady=5)
+
+letters_var = tk.BooleanVar(value=True)
+numbers_var = tk.BooleanVar(value=False)
+special_var = tk.BooleanVar(value=False)
+
+tk.Checkbutton(typo_options_frame, text="Letters", variable=letters_var).pack(side=tk.LEFT, padx=5)
+tk.Checkbutton(typo_options_frame, text="Numbers", variable=numbers_var).pack(side=tk.LEFT, padx=5)
+tk.Checkbutton(typo_options_frame, text="Special chars", variable=special_var).pack(side=tk.LEFT, padx=5)
 
 start_button = tk.Button(root, text="Start Typing", command=start_typing); start_button.pack(pady=5)
 stop_button = tk.Button(root, text="Stop", command=stop); stop_button.pack(pady=5)
