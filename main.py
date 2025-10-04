@@ -7,7 +7,7 @@ import random
 
 # --- Global Variables ---
 stop_typing = False
-is_typing = False  # NEW: flag to check if typing is ongoing
+is_typing = False  # Flag to check if typing is ongoing
 key_listeners = {}
 
 # --- Functions ---
@@ -22,12 +22,14 @@ def start_typing():
     is_typing = True  # Mark typing as started
     text = text_box.get("1.0", tk.END).rstrip("\n")
     
+    # Get typing delay
     try:
         delay_ms = int(delay_entry.get())
     except ValueError:
         delay_ms = 100
     delay = delay_ms / 1000.0
 
+    # Get random per-character delay
     try:
         rand_min_ms = int(rand_min_entry.get())
         rand_max_ms = int(rand_max_entry.get())
@@ -35,6 +37,7 @@ def start_typing():
         rand_min_ms, rand_max_ms = 0, 0
     rand_min, rand_max = rand_min_ms / 1000.0, rand_max_ms / 1000.0
 
+    # Get word delay
     try:
         word_min_ms = int(word_min_entry.get())
         word_max_ms = int(word_max_entry.get())
@@ -42,16 +45,25 @@ def start_typing():
         word_min_ms, word_max_ms = 200, 500
     word_min, word_max = word_min_ms / 1000.0, word_max_ms / 1000.0
 
+    # Get startup delay in ms
+    try:
+        startup_delay_ms = int(startup_delay_entry.get())
+        if startup_delay_ms < 0:
+            startup_delay_ms = 0
+    except ValueError:
+        startup_delay_ms = 3000  # default 3 seconds
+    startup_delay = startup_delay_ms / 1000.0
+
     if not text:
         info_label.config(text="Text box is empty!")
         is_typing = False
         return
 
     # Thread-safe countdown using Tkinter's after
-    def countdown(seconds):
-        if seconds > 0:
-            start_button.config(text=f"Starting in {seconds}...")
-            root.after(1000, countdown, seconds - 1)
+    def countdown(seconds_remaining):
+        if seconds_remaining > 0:
+            start_button.config(text=f"Starting in {seconds_remaining:.0f}ms...")
+            root.after(100, countdown, seconds_remaining - 100)
         else:
             start_button.config(text="Start Typing")
             threading.Thread(
@@ -60,7 +72,7 @@ def start_typing():
                 daemon=True
             ).start()
 
-    countdown(3)
+    countdown(int(startup_delay * 1000))
 
 def type_text(text, delay, rand_min, rand_max, word_min, word_max):
     global stop_typing, is_typing
@@ -88,7 +100,7 @@ def stop():
 
 def remove_focus(event):
     widget = event.widget
-    if widget not in (text_box, delay_entry, rand_min_entry, rand_max_entry, word_min_entry, word_max_entry):
+    if widget not in (text_box, delay_entry, rand_min_entry, rand_max_entry, word_min_entry, word_max_entry, startup_delay_entry):
         root.focus_set()
 
 # --- Hotkey Functions ---
@@ -159,6 +171,12 @@ word_min_entry.pack(side=tk.LEFT, padx=(0,5))
 word_max_entry = tk.Entry(word_frame, width=5)
 word_max_entry.insert(0, "0")
 word_max_entry.pack(side=tk.LEFT)
+
+startup_delay_label = tk.Label(root, text="Startup delay before typing (ms):")
+startup_delay_label.pack()
+startup_delay_entry = tk.Entry(root)
+startup_delay_entry.insert(0, "3000")
+startup_delay_entry.pack(pady=5)
 
 start_button = tk.Button(root, text="Start Typing", command=start_typing)
 start_button.pack(pady=5)
