@@ -26,7 +26,14 @@ def start_typing():
         max_rand_ms = int(rand_delay_entry.get())
     except ValueError:
         max_rand_ms = 0
-    max_rand = max_rand_ms / 1000.0  # convert ms to seconds
+    max_rand = max_rand_ms / 1000.0
+
+    try:
+        word_min_ms = int(word_min_entry.get())
+        word_max_ms = int(word_max_entry.get())
+    except ValueError:
+        word_min_ms, word_max_ms = 200, 500
+    word_min, word_max = word_min_ms / 1000.0, word_max_ms / 1000.0
 
     if not text:
         info_label.config(text="Text box is empty!")
@@ -39,20 +46,26 @@ def start_typing():
             root.after(1000, countdown, seconds - 1)
         else:
             start_button.config(text="Start Typing")
-            threading.Thread(target=type_text, args=(text, delay, max_rand), daemon=True).start()
+            threading.Thread(target=type_text, args=(text, delay, max_rand, word_min, word_max), daemon=True).start()
 
     countdown(3)
 
-def type_text(text, delay, max_rand):
+def type_text(text, delay, max_rand, word_min, word_max):
     global stop_typing
-    for char in text:
+    words = text.split(" ")
+    for i, word in enumerate(words):
         if stop_typing:
             break
-        # Calculate random offset between -max_rand and +max_rand
-        actual_delay = delay + random.uniform(-max_rand, max_rand)
-        # Ensure delay is never negative
-        actual_delay = max(0, actual_delay)
-        pyautogui.write(char, interval=actual_delay)
+        for char in word:
+            if stop_typing:
+                break
+            actual_delay = delay + random.uniform(-max_rand, max_rand)
+            actual_delay = max(0, actual_delay)
+            pyautogui.write(char, interval=actual_delay)
+        if i < len(words) - 1:  # Only add space and word delay if not last word
+            pyautogui.write(" ")
+            word_delay = random.uniform(word_min, word_max)
+            time.sleep(word_delay)
     info_label.config(text="Typing finished" if not stop_typing else "Typing stopped")
 
 def stop():
@@ -62,7 +75,7 @@ def stop():
 
 def remove_focus(event):
     widget = event.widget
-    if widget not in (text_box, delay_entry, rand_delay_entry):
+    if widget not in (text_box, delay_entry, rand_delay_entry, word_min_entry, word_max_entry):
         root.focus_set()
 
 # --- Hotkey Functions ---
@@ -91,7 +104,6 @@ def wait_for_key(action):
     keyboard.hook(assign_key)
 
 def set_hotkey(name, key, func):
-    """Safely update a global hotkey listener."""
     global key_listeners
     if name in key_listeners:
         keyboard.remove_hotkey(key_listeners[name])
@@ -118,6 +130,18 @@ rand_delay_label.pack()
 rand_delay_entry = tk.Entry(root)
 rand_delay_entry.insert(0, "0")
 rand_delay_entry.pack(pady=5)
+
+word_delay_label = tk.Label(root, text="Word delay range (ms, min-max):")
+word_delay_label.pack()
+word_frame = tk.Frame(root)
+word_frame.pack(pady=5)
+
+word_min_entry = tk.Entry(word_frame, width=5)
+word_min_entry.insert(0, "200")
+word_min_entry.pack(side=tk.LEFT, padx=(0,5))
+word_max_entry = tk.Entry(word_frame, width=5)
+word_max_entry.insert(0, "500")
+word_max_entry.pack(side=tk.LEFT)
 
 start_button = tk.Button(root, text="Start Typing", command=start_typing)
 start_button.pack(pady=5)
